@@ -1,110 +1,284 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { CameraType, CameraView, useCameraPermissions } from "expo-camera";
+import { Image } from "expo-image";
+import { useRef, useState } from "react";
+import {
+  Alert,
+  Pressable,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
-import { Collapsible } from '@/components/Collapsible';
-import { ExternalLink } from '@/components/ExternalLink';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
-import { IconSymbol } from '@/components/ui/IconSymbol';
+import { ThemedText } from "@/components/ThemedText";
+import { ThemedView } from "@/components/ThemedView";
+import { IconSymbol } from "@/components/ui/IconSymbol";
 
-export default function TabTwoScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#D0D0D0', dark: '#353636' }}
-      headerImage={
-        <IconSymbol
-          size={310}
-          color="#808080"
-          name="chevron.left.forwardslash.chevron.right"
-          style={styles.headerImage}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Explore</ThemedText>
-      </ThemedView>
-      <ThemedText>This app includes example code to help you get started.</ThemedText>
-      <Collapsible title="File-based routing">
-        <ThemedText>
-          This app has two screens:{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/explore.tsx</ThemedText>
-        </ThemedText>
-        <ThemedText>
-          The layout file in <ThemedText type="defaultSemiBold">app/(tabs)/_layout.tsx</ThemedText>{' '}
-          sets up the tab navigator.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/router/introduction">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Android, iOS, and web support">
-        <ThemedText>
-          You can open this project on Android, iOS, and the web. To open the web version, press{' '}
-          <ThemedText type="defaultSemiBold">w</ThemedText> in the terminal running this project.
-        </ThemedText>
-      </Collapsible>
-      <Collapsible title="Images">
-        <ThemedText>
-          For static images, you can use the <ThemedText type="defaultSemiBold">@2x</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">@3x</ThemedText> suffixes to provide files for
-          different screen densities
-        </ThemedText>
-        <Image source={require('@/assets/images/react-logo.png')} style={{ alignSelf: 'center' }} />
-        <ExternalLink href="https://reactnative.dev/docs/images">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Custom fonts">
-        <ThemedText>
-          Open <ThemedText type="defaultSemiBold">app/_layout.tsx</ThemedText> to see how to load{' '}
-          <ThemedText style={{ fontFamily: 'SpaceMono' }}>
-            custom fonts such as this one.
+export default function FishDetailsScreen() {
+  const [facing, setFacing] = useState<CameraType>("back");
+  const [permission, requestPermission] = useCameraPermissions();
+  const [showCamera, setShowCamera] = useState(false);
+  const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const cameraRef = useRef<CameraView>(null);
+
+  if (!permission) {
+    // Camera permissions are still loading
+    return (
+      <SafeAreaView style={styles.container}>
+        <ThemedView style={styles.loadingContainer}>
+          <ThemedText>Loading camera permissions...</ThemedText>
+        </ThemedView>
+      </SafeAreaView>
+    );
+  }
+
+  if (!permission.granted) {
+    // Camera permissions are not granted yet
+    return (
+      <SafeAreaView style={styles.container}>
+        <ThemedView style={styles.permissionContainer}>
+          <ThemedText type="title" style={styles.title}>
+            Fish Details
           </ThemedText>
+          <ThemedText style={styles.permissionText}>
+            We need your permission to access the camera to identify fish
+          </ThemedText>
+          <Pressable
+            style={styles.permissionButton}
+            onPress={requestPermission}
+          >
+            <Text style={styles.buttonText}>Grant Camera Permission</Text>
+          </Pressable>
+        </ThemedView>
+      </SafeAreaView>
+    );
+  }
+
+  const takePicture = async () => {
+    if (cameraRef.current) {
+      try {
+        const photo = await cameraRef.current.takePictureAsync({
+          quality: 0.8,
+          base64: true,
+        });
+
+        if (photo?.uri) {
+          setCapturedImage(photo.uri);
+          setShowCamera(false);
+
+          // Here you could add fish identification logic
+          Alert.alert(
+            "Photo Captured!",
+            "Fish identification feature coming soon!",
+            [{ text: "OK" }]
+          );
+        }
+      } catch (error) {
+        Alert.alert("Error", "Failed to take picture");
+        console.error("Camera error:", error);
+      }
+    }
+  };
+
+  const toggleCameraFacing = () => {
+    setFacing((current) => (current === "back" ? "front" : "back"));
+  };
+
+  if (showCamera) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <CameraView ref={cameraRef} style={styles.camera} facing={facing}>
+          <View style={styles.cameraButtonContainer}>
+            <Pressable style={styles.cameraButton} onPress={takePicture}>
+              <IconSymbol name="camera.fill" size={30} color="#fff" />
+            </Pressable>
+            <Pressable style={styles.flipButton} onPress={toggleCameraFacing}>
+              <IconSymbol name="camera.rotate" size={24} color="#fff" />
+            </Pressable>
+            <Pressable
+              style={styles.closeButton}
+              onPress={() => setShowCamera(false)}
+            >
+              <IconSymbol name="xmark" size={24} color="#fff" />
+            </Pressable>
+          </View>
+        </CameraView>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <ThemedView style={styles.content}>
+        <ThemedText type="title" style={styles.title}>
+          Fish Details
         </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/versions/latest/sdk/font">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Light and dark mode components">
-        <ThemedText>
-          This template has light and dark mode support. The{' '}
-          <ThemedText type="defaultSemiBold">useColorScheme()</ThemedText> hook lets you inspect
-          what the user&apos;s current color scheme is, and so you can adjust UI colors accordingly.
+
+        <ThemedText style={styles.description}>
+          Take a photo of a fish to identify its species and add it to your
+          collection!
         </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/develop/user-interface/color-themes/">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Animations">
-        <ThemedText>
-          This template includes an example of an animated component. The{' '}
-          <ThemedText type="defaultSemiBold">components/HelloWave.tsx</ThemedText> component uses
-          the powerful <ThemedText type="defaultSemiBold">react-native-reanimated</ThemedText>{' '}
-          library to create a waving hand animation.
-        </ThemedText>
-        {Platform.select({
-          ios: (
-            <ThemedText>
-              The <ThemedText type="defaultSemiBold">components/ParallaxScrollView.tsx</ThemedText>{' '}
-              component provides a parallax effect for the header image.
+
+        {capturedImage && (
+          <View style={styles.imageContainer}>
+            <ThemedText type="subtitle" style={styles.imageTitle}>
+              Last Captured Fish:
             </ThemedText>
-          ),
-        })}
-      </Collapsible>
-    </ParallaxScrollView>
+            <Image
+              source={{ uri: capturedImage }}
+              style={styles.capturedImage}
+              contentFit="cover"
+            />
+          </View>
+        )}
+
+        <Pressable
+          style={styles.cameraOpenButton}
+          onPress={() => setShowCamera(true)}
+        >
+          <IconSymbol name="camera.fill" size={24} color="#fff" />
+          <Text style={styles.buttonText}>Open Camera</Text>
+        </Pressable>
+
+        <View style={styles.infoContainer}>
+          <ThemedText type="subtitle">Features:</ThemedText>
+          <ThemedText style={styles.featureText}>
+            • Take high-quality fish photos
+          </ThemedText>
+          <ThemedText style={styles.featureText}>
+            • AI-powered fish identification (coming soon)
+          </ThemedText>
+          <ThemedText style={styles.featureText}>
+            • Add fish to your collection
+          </ThemedText>
+          <ThemedText style={styles.featureText}>
+            • Track your fishing progress
+          </ThemedText>
+        </View>
+      </ThemedView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  headerImage: {
-    color: '#808080',
-    bottom: -90,
-    left: -35,
-    position: 'absolute',
+  container: {
+    flex: 1,
+    backgroundColor: "#fff",
   },
-  titleContainer: {
-    flexDirection: 'row',
-    gap: 8,
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  permissionContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  content: {
+    flex: 1,
+    padding: 20,
+  },
+  title: {
+    textAlign: "center",
+    marginBottom: 20,
+  },
+  description: {
+    textAlign: "center",
+    marginBottom: 30,
+    fontSize: 16,
+    lineHeight: 24,
+  },
+  permissionText: {
+    textAlign: "center",
+    marginBottom: 20,
+    fontSize: 16,
+    lineHeight: 24,
+  },
+  permissionButton: {
+    backgroundColor: "#007AFF",
+    paddingHorizontal: 30,
+    paddingVertical: 15,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  cameraOpenButton: {
+    backgroundColor: "#48D0B0",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 30,
+    paddingVertical: 15,
+    borderRadius: 15,
+    marginBottom: 30,
+    gap: 10,
+  },
+  buttonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  camera: {
+    flex: 1,
+  },
+  cameraButtonContainer: {
+    flex: 1,
+    flexDirection: "row",
+    backgroundColor: "transparent",
+    margin: 64,
+    alignItems: "flex-end",
+    justifyContent: "space-around",
+  },
+  cameraButton: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: "rgba(255, 255, 255, 0.8)",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 3,
+    borderColor: "#fff",
+  },
+  flipButton: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  closeButton: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  imageContainer: {
+    alignItems: "center",
+    marginBottom: 30,
+  },
+  imageTitle: {
+    marginBottom: 10,
+  },
+  capturedImage: {
+    width: 200,
+    height: 200,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: "#48D0B0",
+  },
+  infoContainer: {
+    backgroundColor: "#f5f5f5",
+    padding: 20,
+    borderRadius: 10,
+  },
+  featureText: {
+    marginLeft: 10,
+    marginBottom: 5,
+    fontSize: 14,
+    lineHeight: 20,
   },
 });
